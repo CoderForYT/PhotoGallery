@@ -1,6 +1,6 @@
 package android.bignerdranch.com.photogallery;
 
-import android.content.Context;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ import java.util.List;
 public class PhotoGalleryFragment extends Fragment {
 
     protected RecyclerView mRecyclerView;
+    protected List<GalleryItem> mItems;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -29,6 +31,7 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+        new FetchItemTask().execute();
     }
 
     @Nullable
@@ -37,34 +40,70 @@ public class PhotoGalleryFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mRecyclerView = (RecyclerView)view.findViewById(R.id.fragment_photo_gallery_recyclerView);
         mRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
-
         return view;
     }
 
-    private class PhotoGalleryAdapter extends RecyclerView.Adapter {
+    private void setAdapter() {
+        if (isAdded()) {
+            mRecyclerView.setAdapter(new PhotoGalleryAdapter(mItems));
+        }
+    }
 
-        @Override
-        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+    private class PhotoGalleryAdapter extends RecyclerView.Adapter<GalleryHolder> {
 
+        public List<GalleryItem> mItems;
+
+        public PhotoGalleryAdapter(List<GalleryItem> items) {
+            mItems = items;
         }
 
         @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            return new PhotoGalleryItem(new View(getActivity()));
+        public GalleryHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            return new GalleryHolder(new TextView(getActivity()));
+        }
+
+        @Override
+        public void onBindViewHolder(GalleryHolder holder, int position) {
+            GalleryItem item = mItems.get(position);
+            holder.onBindItem(item);
         }
 
         @Override
         public int getItemCount() {
-            return 10;
+            return mItems.size();
         }
     }
 
-    private class PhotoGalleryItem extends RecyclerView.ViewHolder {
+    private class GalleryHolder extends RecyclerView.ViewHolder {
 
-        private ImageView mImageView;
+        private GalleryItem mItem;
+        private TextView mTextView;
 
-        public PhotoGalleryItem(View itemView) {
+        public GalleryHolder(View itemView) {
             super(itemView);
+            mTextView = (TextView) itemView;
+        }
+        public void onBindItem(GalleryItem item){
+            mItem = item;
+            mTextView.setText(item.getTitle());
         }
     }
+
+    private class FetchItemTask extends AsyncTask <Void, Void, List<GalleryItem>>{
+
+        @Override
+        protected List<GalleryItem> doInBackground(Void... voids) {
+
+            return new FlickrFetchr().fetchItems();
+        }
+
+        @Override
+        protected void onPostExecute(List<GalleryItem> galleryItems) {
+            super.onPostExecute(galleryItems);
+            mItems = galleryItems;
+            setAdapter();
+        }
+
+    }
+
 }
